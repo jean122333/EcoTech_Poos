@@ -20,6 +20,7 @@ def exigir_admin(sesion):
     if sesion["rol"] != "admin":
         raise PermissionError("Acción solo para administrador.")
 
+    # Prueba GitHub Commit
 
 # DECORADOR
 def requiere_admin(funcion):
