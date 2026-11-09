@@ -1,6 +1,7 @@
 # semilla_bd.py
-# Carga datos de prueba (ficticios). Antes de insertar busca si el dato ya existe,
-# así que se puede ejecutar varias veces sin duplicar.
+# Carga datos de prueba (ficticios): empleados, proyectos, registros y tres cuentas
+# (admin y dos empleados). Antes de insertar busca si el dato ya existe,
+# así que se puede ejecutar varias veces sin duplicar ni cambiar cuentas existentes.
 # Uso: python src/semilla_bd.py
 from getpass import getpass
 
@@ -17,13 +18,11 @@ from persistencia.registro_tiempo_dao import RegistroTiempoDAO
 from persistencia.usuario_dao import UsuarioDAO
 from servicios.autenticacion import registrar_usuario
 
-CORREO_ADMIN = "admin@ecotech.example"
-USUARIO_ADMIN = "admin"
-
+# DATOS DE PRUEBA
 DEPARTAMENTOS = [("Tecnología", "Marta Soto"), ("Administración", "Pedro Rojas")]
 # (nombre, correo, salario, departamento)
 EMPLEADOS = [
-    ("Administrador EcoTech", CORREO_ADMIN, 1200000, "Tecnología"),
+    ("Administrador EcoTech", "admin@ecotech.example", 1200000, "Tecnología"),
     ("Ana Torres", "ana@ecotech.example", 850000, "Tecnología"),
     ("Luis Pérez", "luis@ecotech.example", 920000, "Administración"),
 ]
@@ -33,8 +32,13 @@ PROYECTOS = [("Sitio web", "2026-09-24", "Rediseño del sitio corporativo",
 # (correo, nombre del proyecto, fecha, horas, descripcion)
 REGISTROS = [("ana@ecotech.example", "Sitio web", "2026-09-24", 8, "Maquetación"),
              ("luis@ecotech.example", "Sitio web", "2026-09-25", 6.5, "Revisión de contenidos")]
+# (usuario, correo del empleado, rol); las contraseñas se piden, no están en el código
+CUENTAS = [("admin", "admin@ecotech.example", "admin"),
+           ("ana", "ana@ecotech.example", "empleado"),
+           ("luis", "luis@ecotech.example", "empleado")]
 
 
+# CARGA DE DATOS
 def cargar_departamentos():
     ids = {}
     for nombre, gerente in DEPARTAMENTOS:
@@ -78,11 +82,8 @@ def cargar_proyectos(ids_empleado):
         ids[nombre] = proyecto.id_proyecto
         for correo in correos:
             id_empleado = ids_empleado[correo]
-            ya_asignado = False
-            for p in ProyectoDAO.listar_por_empleado(id_empleado):
-                if p.id_proyecto == proyecto.id_proyecto:
-                    ya_asignado = True
-            if not ya_asignado:
+            asignados = {p.id_proyecto for p in ProyectoDAO.listar_por_empleado(id_empleado)}
+            if proyecto.id_proyecto not in asignados:
                 ProyectoDAO.asignar_empleado(proyecto.id_proyecto, id_empleado)
                 print(f"Asignado: {correo} -> {nombre}")
     return ids
@@ -91,11 +92,8 @@ def cargar_proyectos(ids_empleado):
 def cargar_registros(ids_empleado, ids_proyecto):
     for correo, proyecto, fecha, horas, descripcion in REGISTROS:
         id_empleado = ids_empleado[correo]
-        ya_cargado = False
-        for r in RegistroTiempoDAO.listar_por_empleado(id_empleado):
-            if r.fecha == fecha and r.descripcion == descripcion:
-                ya_cargado = True
-        if ya_cargado:
+        existentes = RegistroTiempoDAO.listar_por_empleado(id_empleado)
+        if any(r.fecha == fecha and r.descripcion == descripcion for r in existentes):
             print(f"Ya existe: registro de {correo} ({fecha})")
             continue
         RegistroTiempoDAO.insertar(RegistroTiempo(
@@ -105,32 +103,44 @@ def cargar_registros(ids_empleado, ids_proyecto):
         print(f"Creado: registro de {correo} ({fecha})")
 
 
-def cargar_cuenta_admin(ids_empleado):
-    # si la cuenta ya existe no se toca
-    if UsuarioDAO.buscar_por_nombre(USUARIO_ADMIN) is not None:
-        print(f"Ya existe: cuenta {USUARIO_ADMIN}")
-        return
+# CUENTAS
+def _pedir_clave_nueva(usuario):
     while True:
-        clave = getpass(f"Contraseña para la cuenta '{USUARIO_ADMIN}': ")
+        clave = getpass(f"Contraseña para la cuenta '{usuario}': ")
         try:
             Usuario.validar_clave(clave)
         except ValueError as error:
             print(f"{error} Intenta nuevamente.")
             continue
         if clave == getpass("Repita la contraseña: "):
-            break
+            return clave
         print("Las contraseñas no coinciden.")
-    usuario_id = registrar_usuario(ids_empleado[CORREO_ADMIN], USUARIO_ADMIN, clave)
-    print(f"Creado: cuenta {USUARIO_ADMIN} (ID {usuario_id})")
 
 
+def cargar_cuentas(ids_empleado):
+    for usuario, correo, rol in CUENTAS:
+        # si la cuenta ya existe no se toca: repetir la semilla no cambia roles ni claves
+        if UsuarioDAO.buscar_por_nombre(usuario) is not None:
+            print(f"Ya existe: cuenta {usuario}")
+            continue
+        try:
+            usuario_id = registrar_usuario(
+                ids_empleado[correo], usuario, _pedir_clave_nueva(usuario), rol
+            )
+        except ValueError as error:
+            print(f"No se creó la cuenta {usuario}: {error}")
+            continue
+        print(f"Creado: cuenta {usuario} (rol {rol}, ID {usuario_id})")
+
+
+# PROGRAMA
 def sembrar():
     crear_tablas()
     ids_departamento = cargar_departamentos()
     ids_empleado = cargar_empleados(ids_departamento)
     ids_proyecto = cargar_proyectos(ids_empleado)
     cargar_registros(ids_empleado, ids_proyecto)
-    cargar_cuenta_admin(ids_empleado)
+    cargar_cuentas(ids_empleado)
     print("Semilla lista.")
 
 

@@ -7,6 +7,18 @@ _COLUMNAS = "id_registro, fecha, horas_trabajadas, descripcion, empleado_id, pro
 
 
 class RegistroTiempoDAO:
+    # MAPEO FILA -> OBJETO
+    @staticmethod
+    def _fila_a_registro(fila):
+        return RegistroTiempo(
+            id_registro=fila[0],
+            fecha=str(fila[1]),  # MariaDB entrega un objeto date
+            horas_trabajadas=float(fila[2]),  # y un DECIMAL
+            descripcion=fila[3],
+            empleado_id=fila[4],
+            proyecto_id=fila[5],
+        )
+
     # CREATE
     @staticmethod
     def insertar(registro):
@@ -24,18 +36,6 @@ class RegistroTiempoDAO:
         )
         registro.id_registro = nuevo_id
         return registro
-
-    # mapeo fila -> objeto
-    @staticmethod
-    def _fila_a_registro(fila):
-        return RegistroTiempo(
-            id_registro=fila[0],
-            fecha=str(fila[1]),  # MariaDB entrega un objeto date
-            horas_trabajadas=float(fila[2]),  # y un DECIMAL
-            descripcion=fila[3],
-            empleado_id=fila[4],
-            proyecto_id=fila[5],
-        )
 
     # READ
     @staticmethod

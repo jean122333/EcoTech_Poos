@@ -1,7 +1,9 @@
 # persistencia/crear_bd.py
+# Crea las tablas según el motor (SQLite o MariaDB) y migra bases de versiones anteriores.
 from persistencia.conexion import abrir_conexion, obtener_motor
 
-# Tipos de columna según el motor. Así se escribe cada CREATE TABLE una sola vez.
+# TIPOS POR MOTOR
+# Así cada CREATE TABLE se escribe una sola vez.
 _TIPOS = {
     "sqlite": {
         "pk": "INTEGER PRIMARY KEY AUTOINCREMENT",
@@ -13,6 +15,8 @@ _TIPOS = {
         "dinero": "REAL",
         "horas": "REAL",
         "fecha": "TEXT",
+        "indicador": "REAL",
+        "momento": "TEXT",
         "final": "",
     },
     "mysql": {
@@ -25,11 +29,14 @@ _TIPOS = {
         "dinero": "DECIMAL(10,2)",
         "horas": "DECIMAL(5,2)",
         "fecha": "DATE",
+        "indicador": "DECIMAL(14,4)",
+        "momento": "DATETIME",
         # InnoDB es el motor que soporta claves foráneas
         "final": " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
     },
 }
 
+# TABLAS
 # el orden importa: primero las tablas a las que otras hacen referencia
 _TABLAS = [
     # Departamento 1 a muchos Empleado: la clave foránea queda en empleado
@@ -83,19 +90,34 @@ _TABLAS = [
     ){final}
     """,
     # Empleado 1 a 0..1 Usuario: empleado_id es FK, UNIQUE y NOT NULL
-    # se guarda password_hash, no la contraseña
+    # se guarda password_hash, no la contraseña; rol solo admite admin o empleado
     """
     CREATE TABLE IF NOT EXISTS usuario (
         id_usuario {pk},
         nombre_usuario {texto_corto} NOT NULL UNIQUE,
         password_hash {hash} NOT NULL,
         empleado_id {int} NOT NULL UNIQUE,
+        rol {texto_corto} NOT NULL DEFAULT 'empleado' CHECK (rol IN ('admin', 'empleado')),
         FOREIGN KEY (empleado_id) REFERENCES empleado (id_empleado) ON DELETE CASCADE
+    ){final}
+    """,
+    # Observaciones del dólar guardadas desde la API: una fila por fuente + indicador + fecha
+    """
+    CREATE TABLE IF NOT EXISTS indicador_api (
+        id_indicador {pk},
+        fuente {texto_corto} NOT NULL,
+        codigo {texto_corto} NOT NULL,
+        fecha {fecha} NOT NULL,
+        valor {indicador} NOT NULL,
+        unidad {texto_corto} NOT NULL,
+        verificado_en {momento} NOT NULL,
+        UNIQUE (fuente, codigo, fecha)
     ){final}
     """,
 ]
 
 
+# AYUDAS DE MIGRACIÓN
 def _tiene_columna(cursor, tabla, columna):
     if obtener_motor() == "sqlite":
         cursor.execute(f"PRAGMA table_info({tabla})")
@@ -121,13 +143,26 @@ def _migrar_empleado(cursor):
         )
 
 
+def _migrar_usuario(cursor, tipos):
+    """Bases creadas antes de los roles no tienen usuario.rol."""
+    if _tiene_columna(cursor, "usuario", "rol"):
+        return
+    cursor.execute(
+        f"ALTER TABLE usuario ADD COLUMN rol {tipos['texto_corto']} "
+        "NOT NULL DEFAULT 'empleado' CHECK (rol IN ('admin', 'empleado'))"
+    )
+    # la cuenta 'admin' que creó la semilla antes de existir los roles sigue siendo admin
+    cursor.execute("UPDATE usuario SET rol = 'admin' WHERE nombre_usuario = 'admin'")
+
+
+# CREACIÓN
 def crear_tablas():
     conexion = None
     try:
         conexion = abrir_conexion()
         cursor = conexion.cursor()
         tipos = _TIPOS[obtener_motor()]
-        
+
         # se desactivan las claves foráneas mientras se crean las tablas
         # (esta instrucción solo existe en MySQL/MariaDB)
         es_mysql = obtener_motor() == "mysql"
@@ -142,6 +177,7 @@ def crear_tablas():
             cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
 
         _migrar_empleado(cursor)
+        _migrar_usuario(cursor, tipos)
         conexion.commit()
     except Exception:
         if conexion:

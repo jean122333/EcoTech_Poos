@@ -3,12 +3,14 @@ from dominio.registroTiempo import RegistroTiempo
 from persistencia.empleado_dao import EmpleadoDAO
 from persistencia.proyecto_dao import ProyectoDAO
 from persistencia.registro_tiempo_dao import RegistroTiempoDAO
+from servicios.permisos import requiere_admin
 from menus.entradas import (
     manejar_errores, ejecutar_menu, solicitar_entero, solicitar_decimal,
     solicitar_fecha, solicitar_texto,
 )
 
 
+# AYUDAS
 def _mostrar(registros):
     if not registros:
         print("No hay registros.")
@@ -24,8 +26,10 @@ def _pedir_proyecto_id():
     return id_proyecto
 
 
+# OPERACIONES (solo administrador)
 @manejar_errores("registrar horas")
-def registrar_horas():
+@requiere_admin
+def registrar_horas(sesion):
     id_empleado = solicitar_entero("ID del empleado")
     if EmpleadoDAO.buscar_por_id(id_empleado) is None:
         print("Empleado no encontrado.")
@@ -42,12 +46,14 @@ def registrar_horas():
 
 
 @manejar_errores("listar registros de tiempo")
-def listar_registros():
+@requiere_admin
+def listar_registros(sesion):
     _mostrar(RegistroTiempoDAO.listar())
 
 
 @manejar_errores("listar registros de un empleado")
-def listar_por_empleado():
+@requiere_admin
+def listar_por_empleado(sesion):
     id_empleado = solicitar_entero("ID del empleado")
     if EmpleadoDAO.buscar_por_id(id_empleado) is None:
         print("Empleado no encontrado.")
@@ -58,7 +64,8 @@ def listar_por_empleado():
 
 
 @manejar_errores("listar registros de un proyecto")
-def listar_por_proyecto():
+@requiere_admin
+def listar_por_proyecto(sesion):
     id_proyecto = solicitar_entero("ID del proyecto")
     if ProyectoDAO.buscar_por_id(id_proyecto) is None:
         print("Proyecto no encontrado.")
@@ -68,7 +75,8 @@ def listar_por_proyecto():
 
 
 @manejar_errores("actualizar registro de tiempo")
-def actualizar_registro():
+@requiere_admin
+def actualizar_registro(sesion):
     registro = RegistroTiempoDAO.buscar_por_id(solicitar_entero("ID del registro"))
     if registro is None:
         print("Registro no encontrado.")
@@ -94,14 +102,16 @@ def actualizar_registro():
 
 
 @manejar_errores("eliminar registro de tiempo")
-def eliminar_registro():
+@requiere_admin
+def eliminar_registro(sesion):
     if RegistroTiempoDAO.eliminar(solicitar_entero("ID del registro")):
         print("Registro eliminado correctamente.")
     else:
         print("Registro no encontrado.")
 
 
-def menu_registro_tiempo():
+# MENÚ
+def menu_registro_tiempo(sesion):
     ejecutar_menu("REGISTRO DE TIEMPO", {
         1: ("Registrar horas", registrar_horas),
         2: ("Listar todos los registros", listar_registros),
@@ -109,4 +119,4 @@ def menu_registro_tiempo():
         4: ("Listar registros de un proyecto", listar_por_proyecto),
         5: ("Actualizar registro", actualizar_registro),
         6: ("Eliminar registro", eliminar_registro),
-    })
+    }, sesion)

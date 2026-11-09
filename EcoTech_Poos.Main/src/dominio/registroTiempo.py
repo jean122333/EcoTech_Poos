@@ -9,6 +9,7 @@ class RegistroTiempo:
     Guarda empleado_id y proyecto_id para poder guardarse en la base de datos.
     """
 
+    # CONSTRUCTOR
     # registroDeTiempo(fecha, horas) es el constructor del UML;
     # los demás parámetros son opcionales
     def __init__(self, fecha: str, horas_trabajadas: float, descripcion: str = "",
@@ -21,7 +22,7 @@ class RegistroTiempo:
         self.empleado_id = empleado_id
         self.proyecto_id = proyecto_id
 
-    # encapsulamiento: atributos privados + validación
+    # PROPIEDADES
     @property
     def id_registro(self) -> int | None:
         return self._id_registro
@@ -66,7 +67,7 @@ class RegistroTiempo:
             raise ValueError("La descripción debe ser texto")
         self._descripcion = valor.strip()
 
-    # métodos del UML
+    # MÉTODOS DEL UML
     def calcular_horas(self) -> float:
         return self._horas_trabajadas
 
@@ -74,6 +75,7 @@ class RegistroTiempo:
         return (f"[{self.id_registro}] fecha: {self.fecha} hrs: {self.horas_trabajadas} "
                 f"(empleado {self.empleado_id}, proyecto {self.proyecto_id})")
 
+    # PRESENTACIÓN
     def __str__(self):
         return (f"RegistroTiempo(id={self.id_registro}, fecha={self.fecha}, "
                 f"horas={self.horas_trabajadas})")

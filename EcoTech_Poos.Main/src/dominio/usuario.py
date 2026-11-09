@@ -1,30 +1,27 @@
 # src/dominio/usuario.py
 # Cuenta de acceso de un empleado: Empleado 1 a 0..1 Usuario.
-# Esta clase no conoce SQL ni bcrypt, solo valida y guarda el hash.
+# Esta clase no conoce SQL ni bcrypt: solo valida y guarda el hash.
 
 
 class Usuario:
+    # CONSTANTES
     MIN_USUARIO = 3
     MAX_USUARIO = 40
     MIN_CLAVE = 6
+    ROLES = ("admin", "empleado")
 
-    def __init__(self, nombre_usuario, password_hash, empleado_id, id_usuario=None):
+    # CONSTRUCTOR
+    def __init__(self, nombre_usuario, password_hash, empleado_id, id_usuario=None,
+                 rol="empleado"):
         if type(empleado_id) is not int or empleado_id <= 0:
             raise ValueError("El ID del empleado debe ser positivo.")
         self._id_usuario = id_usuario
         self.empleado_id = empleado_id
         self.nombre_usuario = self.normalizar_usuario(nombre_usuario)
         self.password_hash = password_hash  # se guarda el hash, nunca la contraseña
+        self.rol = self.validar_rol(rol)
 
-    @property
-    def id_usuario(self):
-        return self._id_usuario
-
-    @id_usuario.setter
-    def id_usuario(self, valor):
-        # lo usa el DAO para guardar el id que genera la base de datos
-        self._id_usuario = valor
-
+    # VALIDADORES
     @classmethod
     def normalizar_usuario(cls, nombre):
         if not isinstance(nombre, str):
@@ -47,7 +44,24 @@ class Usuario:
             raise ValueError(f"Use al menos {cls.MIN_CLAVE} caracteres.")
         return clave  # sin strip ni lower: la contraseña se guarda tal cual
 
+    @classmethod
+    def validar_rol(cls, rol):
+        if not isinstance(rol, str) or rol not in cls.ROLES:
+            raise ValueError("Rol no permitido.")
+        return rol
+
+    # PROPIEDADES
+    @property
+    def id_usuario(self):
+        return self._id_usuario
+
+    @id_usuario.setter
+    def id_usuario(self, valor):
+        # lo usa el DAO para guardar el id que genera la base de datos
+        self._id_usuario = valor
+
+    # PRESENTACIÓN
     def __str__(self):
         # no se muestra el hash
         return (f"Usuario(id={self.id_usuario}, usuario={self.nombre_usuario}, "
-                f"empleado_id={self.empleado_id})")
+                f"empleado_id={self.empleado_id}, rol={self.rol})")

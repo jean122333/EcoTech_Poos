@@ -1,41 +1,56 @@
 # servicios/indicadores.py
-# Consulta del dólar observado a una API (mindicador.cl).
-# Este archivo solo obtiene y valida datos; mostrarlos le toca al menú.
-import math
-from datetime import date
+# Coordina sesión, consulta a la API, guardado en la BD local y respaldo.
+# Devuelve resultados; mostrarlos le toca al menú.
+import logging
 
 import requests
 
-URL_DOLAR = "https://mindicador.cl/api/dolar"
+from persistencia.indicador_dao import IndicadorDAO
+from servicios.api_dolar import obtener_datos
+from servicios.deserializador_indicador import DeserializadorIndicador
+from servicios.permisos import exigir_sesion
+
+# fallos esperables al consultar la API o leer su respuesta
+_ERRORES_API = (requests.exceptions.RequestException, ValueError, KeyError, TypeError)
 
 
-def obtener_datos():
-    respuesta = requests.get(URL_DOLAR, timeout=(3, 5))
-    respuesta.raise_for_status()  # primero se revisa el estado HTTP
-    return respuesta.json()
+# RESPALDO
+def buscar_respaldo():
+    """Último dato guardado en la BD local (la API falló o respondió algo inválido)."""
+    try:
+        dato = IndicadorDAO.ultimo()
+    except Exception:
+        logging.exception("No se pudo leer el respaldo del indicador")
+        dato = None
+
+    if dato is None:
+        return {"dato": None, "origen": None,
+                "mensaje": "Servicio no disponible y no hay datos guardados."}
+    return {"dato": dato, "origen": "BD local",
+            "mensaje": "Servicio no disponible o respuesta inválida: "
+                       "se muestra el último dato guardado."}
 
 
-def extraer_primero(datos):
-    """Devuelve (fecha, valor) del primer registro de la serie."""
-    if not isinstance(datos, dict):
-        raise ValueError("Respuesta inesperada.")
-    if datos.get("unidad_medida") != "Pesos":
-        raise ValueError("Unidad inesperada.")
-    serie = datos.get("serie")
-    if not isinstance(serie, list) or not serie:
-        raise ValueError("No hay valores disponibles.")
+# CONSULTA
+def consultar_indicador(sesion):
+    exigir_sesion(sesion)
+    try:
+        dato = DeserializadorIndicador.desde_api(obtener_datos())
+    except _ERRORES_API:
+        logging.exception("Falló la consulta del dólar")  # el detalle queda en ecotech.log
+        return buscar_respaldo()
 
-    registro = serie[0]
-    valor = registro["valor"]
-    # solo números finitos y mayores que cero
-    if type(valor) not in (int, float) or not math.isfinite(valor) or valor <= 0:
-        raise ValueError("Valor del indicador inválido.")
-    # '2026-01-02T00:00:00.000Z' queda como '2026-01-02'
-    fecha = date.fromisoformat(registro["fecha"][:10]).isoformat()
-    return fecha, valor
+    # el guardado se confirma solo si fue exitoso
+    try:
+        IndicadorDAO.guardar(dato)
+        mensaje = "Dato guardado en la base de datos local."
+    except Exception:
+        logging.exception("No se pudo guardar el indicador")
+        mensaje = "No se pudo guardar el dato en la base de datos local."
+    return {"dato": dato, "origen": "API", "mensaje": mensaje}
 
 
-def clp_a_usd(monto_clp, valor_dolar):
-    if valor_dolar <= 0 or monto_clp < 0:
-        raise ValueError("Valores inválidos para la conversión.")
-    return monto_clp / valor_dolar
+# HISTORIAL
+def obtener_historial(sesion):
+    exigir_sesion(sesion)
+    return IndicadorDAO.listar()  # lee la BD, no llama a la API

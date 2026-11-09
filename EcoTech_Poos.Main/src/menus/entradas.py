@@ -10,15 +10,17 @@ from datetime import date
 
 from persistencia.conexion import ERRORES_INTEGRIDAD
 
+# CONSTANTES 
 MENSAJE_SEGURO = "No fue posible completar la operación."
 MENSAJE_INTEGRIDAD = ("Ya existe un registro con esos datos "
                       "o hace referencia a algo que no existe.")
 
 
-# manejo de errores
+# MANEJO DE ERRORES 
 def manejar_errores(accion, mensaje_integridad=MENSAJE_INTEGRIDAD):
     """Decorador: ejecuta la operación del menú y maneja los errores.
 
+    - PermissionError: sin sesión o sin permiso, se muestra el mensaje.
     - ValueError / TypeError: dato inválido, se muestra el mensaje.
     - ERRORES_INTEGRIDAD: dato duplicado o clave foránea que no existe.
     - Exception: error inesperado, se guarda en ecotech.log y el usuario ve un mensaje general.
@@ -28,6 +30,8 @@ def manejar_errores(accion, mensaje_integridad=MENSAJE_INTEGRIDAD):
         def envoltura(*args, **kwargs):
             try:
                 return funcion(*args, **kwargs)
+            except PermissionError as error:
+                print(error)
             except (TypeError, ValueError) as error:
                 print("Datos inválidos:", error)
             except ERRORES_INTEGRIDAD:
@@ -39,7 +43,7 @@ def manejar_errores(accion, mensaje_integridad=MENSAJE_INTEGRIDAD):
     return decorador
 
 
-# validación de entradas
+# VALIDACIÓN DE ENTRADAS 
 def solicitar_opcion(maximo):
     while True:
         try:
@@ -127,11 +131,11 @@ def confirmar(mensaje):
     return input(f"{mensaje} (s/n): ").strip().lower() in ("s", "si", "sí")
 
 
-# menú genérico
-def ejecutar_menu(titulo, opciones):
+# MENÚ GENÉRICO 
+def ejecutar_menu(titulo, opciones, *args):
     """Muestra un menú y ejecuta la opción elegida hasta que se elige 0.
 
-    opciones: {numero: (texto, funcion)}
+    opciones: {numero: (texto, funcion)}. Cada función recibe los *args (por ejemplo, la sesión).
     """
     while True:
         print(f"\n===== {titulo} =====")
@@ -142,4 +146,4 @@ def ejecutar_menu(titulo, opciones):
         opcion = solicitar_opcion(max(opciones))
         if opcion == 0:
             return
-        opciones[opcion][1]()
+        opciones[opcion][1](*args)

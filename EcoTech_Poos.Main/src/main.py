@@ -1,10 +1,11 @@
 # main.py
+# Solo coordina: no contiene SQL ni credenciales.
 import logging
 
+from menus.menu_usuario import menu_privado, solicitar_login
 from persistencia.conexion import probar_conexion
 from persistencia.crear_bd import crear_tablas
 from persistencia.usuario_dao import UsuarioDAO
-from menus.menu_usuario import solicitar_login, menu_privado
 
 # el detalle técnico del error se guarda en un archivo; el usuario solo ve un mensaje seguro
 logging.basicConfig(
@@ -14,6 +15,7 @@ logging.basicConfig(
 )
 
 
+# SESIÓN
 def iniciar_sesion_y_menu():
     # primero el login; sin sesión no se muestra el menú
     while True:
@@ -30,8 +32,8 @@ def iniciar_sesion_y_menu():
         print("Sesión cerrada. Ingrese nuevamente.")
 
 
+# PROGRAMA
 def main():
-    # main.py solo coordina: no contiene SQL ni credenciales
     if not probar_conexion():
         raise SystemExit("Revisa el archivo .env y que MariaDB/MySQL esté iniciado.")
 
@@ -43,7 +45,7 @@ def main():
 
     try:
         if UsuarioDAO.contar() == 0:
-            # sin cuentas nadie puede entrar: la semilla crea el empleado y la cuenta admin
+            # sin cuentas nadie puede entrar: la semilla crea los empleados y las cuentas
             raise SystemExit("No hay cuentas de usuario. Ejecute primero: python src/semilla_bd.py")
         iniciar_sesion_y_menu()
     except (KeyboardInterrupt, EOFError):

@@ -7,6 +7,7 @@ No tiene SQL de ninguna entidad.
 from persistencia.conexion import abrir_conexion
 
 
+# ESCRITURA
 def ejecutar_escritura(sql, parametros=()):
     """INSERT / UPDATE / DELETE. Devuelve (filas_afectadas, ultimo_id).
 
@@ -29,6 +30,7 @@ def ejecutar_escritura(sql, parametros=()):
             conexion.close()
 
 
+# LECTURA
 def consultar(sql, parametros=(), uno=False):
     """SELECT. Devuelve una fila (o None) si uno=True; si no, una lista de filas."""
     conexion = None

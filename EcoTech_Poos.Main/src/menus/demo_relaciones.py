@@ -1,11 +1,16 @@
 # menus/demo_relaciones.py
+
 """Demostración en memoria de las relaciones del UML (no usa la base de datos)."""
 from dominio.departamento import Departamento
 from dominio.empleado import Empleado
 from dominio.proyecto import Proyecto
+from menus.entradas import manejar_errores
+from servicios.permisos import requiere_admin
 
 
-def demo_relaciones():
+@manejar_errores("ejecutar la demo de relaciones")
+@requiere_admin
+def demo_relaciones(sesion):
     print("\n--- Demo de relaciones (en memoria) ---")
     ana = Empleado("Ana Torres", "ana.torres@ecotech.cl", 850000)
     luis = Empleado("Luis Pérez", "luis.perez@ecotech.cl", 920000)

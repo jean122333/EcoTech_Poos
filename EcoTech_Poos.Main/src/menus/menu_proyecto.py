@@ -3,6 +3,7 @@ from dominio.proyecto import Proyecto
 from persistencia.conexion import ERRORES_INTEGRIDAD
 from persistencia.empleado_dao import EmpleadoDAO
 from persistencia.proyecto_dao import ProyectoDAO
+from servicios.permisos import requiere_admin
 from menus.entradas import (
     manejar_errores, ejecutar_menu, solicitar_entero, solicitar_fecha, solicitar_texto,
 )
@@ -10,8 +11,10 @@ from menus.entradas import (
 _MSG_DUPLICADO = "Ya existe un proyecto con ese nombre."
 
 
+# OPERACIONES (solo administrador)
 @manejar_errores("registrar proyecto", _MSG_DUPLICADO)
-def registrar_proyecto():
+@requiere_admin
+def registrar_proyecto(sesion):
     nombre = solicitar_texto("Nombre del proyecto")
     fecha = solicitar_fecha("Fecha de inicio")
     descripcion = solicitar_texto("Descripción", obligatorio=False)
@@ -22,7 +25,8 @@ def registrar_proyecto():
 
 
 @manejar_errores("listar proyectos")
-def listar_proyectos():
+@requiere_admin
+def listar_proyectos(sesion):
     proyectos = ProyectoDAO.listar()
     if not proyectos:
         print("No hay proyectos registrados.")
@@ -34,7 +38,8 @@ def listar_proyectos():
 
 
 @manejar_errores("buscar proyecto")
-def buscar_proyecto():
+@requiere_admin
+def buscar_proyecto(sesion):
     print("1. Buscar por ID")
     print("2. Buscar por nombre")
     criterio = input("Seleccione el criterio: ").strip()
@@ -54,7 +59,8 @@ def buscar_proyecto():
 
 
 @manejar_errores("actualizar proyecto", _MSG_DUPLICADO)
-def actualizar_proyecto():
+@requiere_admin
+def actualizar_proyecto(sesion):
     proyecto = ProyectoDAO.buscar_por_id(solicitar_entero("ID del proyecto"))
     if proyecto is None:
         print("Proyecto no encontrado.")
@@ -80,7 +86,8 @@ def actualizar_proyecto():
 
 
 @manejar_errores("eliminar proyecto")
-def eliminar_proyecto():
+@requiere_admin
+def eliminar_proyecto(sesion):
     if ProyectoDAO.eliminar(solicitar_entero("ID del proyecto")):
         print("Proyecto eliminado correctamente.")
     else:
@@ -88,7 +95,8 @@ def eliminar_proyecto():
 
 
 @manejar_errores("asignar empleado a proyecto")
-def asignar_empleado():
+@requiere_admin
+def asignar_empleado(sesion):
     id_proyecto = solicitar_entero("ID del proyecto")
     id_empleado = solicitar_entero("ID del empleado")
 
@@ -108,7 +116,8 @@ def asignar_empleado():
 
 
 @manejar_errores("quitar empleado de proyecto")
-def quitar_empleado():
+@requiere_admin
+def quitar_empleado(sesion):
     id_proyecto = solicitar_entero("ID del proyecto")
     id_empleado = solicitar_entero("ID del empleado")
 
@@ -119,7 +128,8 @@ def quitar_empleado():
 
 
 @manejar_errores("listar empleados del proyecto")
-def ver_empleados_proyecto():
+@requiere_admin
+def ver_empleados_proyecto(sesion):
     proyecto = ProyectoDAO.buscar_por_id(solicitar_entero("ID del proyecto"))
     if proyecto is None:
         print("Proyecto no encontrado.")
@@ -133,7 +143,8 @@ def ver_empleados_proyecto():
         print(" ", empleado.mostrar_datos())
 
 
-def menu_proyecto():
+# MENÚ
+def menu_proyecto(sesion):
     ejecutar_menu("PROYECTOS", {
         1: ("Registrar proyecto", registrar_proyecto),
         2: ("Listar proyectos", listar_proyectos),
@@ -143,4 +154,4 @@ def menu_proyecto():
         6: ("Asignar empleado al proyecto", asignar_empleado),
         7: ("Quitar empleado del proyecto", quitar_empleado),
         8: ("Ver empleados del proyecto", ver_empleados_proyecto),
-    })
+    }, sesion)

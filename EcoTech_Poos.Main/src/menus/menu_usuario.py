@@ -1,36 +1,27 @@
 # menus/menu_usuario.py
-# Registro, login y opciones que solo se ven con la sesión iniciada.
+# Login, creación de cuentas y menú principal según el rol de la sesión.
 import logging
 from getpass import getpass
 
-import requests
-
 from dominio.usuario import Usuario
+from menus.demo_relaciones import demo_relaciones
 from menus.entradas import (
-    manejar_errores, pedir_dato, solicitar_decimal, solicitar_entero, solicitar_opcion,
+    ejecutar_menu, manejar_errores, pedir_dato, solicitar_entero, solicitar_opcion,
 )
-from menus.menu_empleado import menu_empleado
 from menus.menu_departamento import menu_departamento
+from menus.menu_empleado import menu_empleado
+from menus.menu_indicadores import menu_indicadores
+from menus.menu_mi_cuenta import (
+    editar_mis_datos, mostrar_mi_ficha, registrar_horas_propias, ver_mis_proyectos,
+    ver_mis_registros,
+)
 from menus.menu_proyecto import menu_proyecto
 from menus.menu_registro_tiempo import menu_registro_tiempo
-from menus.demo_relaciones import demo_relaciones
-from servicios.autenticacion import autenticar, registrar_usuario
-from servicios.indicadores import URL_DOLAR, clp_a_usd, extraer_primero, obtener_datos
+from servicios.autenticacion import autenticar, crear_cuenta_empleado
+from servicios.permisos import requiere_admin
 
 
-@manejar_errores("registrar usuario", "No se pudo crear esa cuenta.")
-def solicitar_registro():
-    empleado_id = solicitar_entero("ID del empleado que tendrá la cuenta")
-    nombre = pedir_dato("Nuevo usuario: ", Usuario.normalizar_usuario)
-    clave = pedir_dato("Contraseña: ", Usuario.validar_clave, leer=getpass)
-    if clave != getpass("Repita la contraseña: "):
-        print("Las contraseñas no coinciden. Vuelva al registro.")
-        return None
-    usuario_id = registrar_usuario(empleado_id, nombre, clave)
-    print(f"Cuenta creada correctamente. ID: {usuario_id}")
-    return usuario_id
-
-
+# LOGIN
 def solicitar_login():
     nombre = input("Usuario: ")
     clave = getpass("Contraseña: ")
@@ -51,77 +42,68 @@ def solicitar_login():
     return usuario
 
 
-def mostrar_perfil(usuario_actual):
-    if usuario_actual is None:
-        print("Inicie sesión para ver el perfil.")
-        return
-    print(f"Usuario: {usuario_actual['nombre_usuario']}")
-    print(f"Empleado: {usuario_actual['empleado_id']}")
+# ADMINISTRACIÓN (solo administrador)
+@manejar_errores("registrar usuario", "No se pudo crear esa cuenta.")
+@requiere_admin
+def solicitar_registro(sesion):
+    # el formulario no ofrece elegir rol: el servicio asigna empleado
+    empleado_id = solicitar_entero("ID del empleado que tendrá la cuenta")
+    nombre = pedir_dato("Nuevo usuario: ", Usuario.normalizar_usuario)
+    clave = pedir_dato("Contraseña: ", Usuario.validar_clave, leer=getpass)
+    if clave != getpass("Repita la contraseña: "):
+        print("Las contraseñas no coinciden. Vuelva al registro.")
+        return None
+    usuario_id = crear_cuenta_empleado(sesion, empleado_id, nombre, clave)
+    print(f"Cuenta creada correctamente. ID: {usuario_id}")
+    return usuario_id
 
 
-def consultar_dolar(usuario_actual):
-    if usuario_actual is None:
-        print("Inicie sesión para consultar indicadores.")
-        return
-    try:
-        datos = obtener_datos()
-        fecha, valor = extraer_primero(datos)
-    except requests.exceptions.RequestException:
-        # falla la conexión, el tiempo de espera, el estado HTTP o el JSON
-        print("No pudimos consultar el servicio. Reintente.")
-        return
-    except (ValueError, KeyError, TypeError):
-        print("La respuesta no contiene un indicador válido.")
-        return
-
-    print(f"Dólar observado: {valor:.2f} CLP por USD")
-    print(f"Fecha del registro: {fecha}")
-    print(f"Origen: {URL_DOLAR}")
-
-    monto = solicitar_decimal("Monto en CLP para estimar en dólares (vacío = omitir)",
-                              opcional=True)
-    if monto is not None:
-        print(f"Estimación: {monto:,.0f} CLP = {clp_a_usd(monto, valor):,.2f} USD")
-        print("(es una referencia, no una cotización bancaria)")
+@manejar_errores("abrir la administración")
+@requiere_admin
+def menu_administracion(sesion):
+    ejecutar_menu("ADMINISTRACIÓN", {
+        1: ("Empleados", menu_empleado),
+        2: ("Departamentos", menu_departamento),
+        3: ("Proyectos", menu_proyecto),
+        4: ("Registro de tiempo (todos)", menu_registro_tiempo),
+        5: ("Crear cuenta de usuario para un empleado", solicitar_registro),
+        6: ("Demo de relaciones (sin base de datos)", demo_relaciones),
+    }, sesion)
 
 
+# MENÚ PRINCIPAL
+def _opciones_del_rol(sesion):
+    opciones = {
+        1: ("Mi ficha", mostrar_mi_ficha),
+        2: ("Editar mis datos", editar_mis_datos),
+        3: ("Mis proyectos", ver_mis_proyectos),
+        4: ("Mis registros de tiempo", ver_mis_registros),
+        5: ("Registrar mis horas", registrar_horas_propias),
+        6: ("Dólar (consultar e historial)", menu_indicadores),
+    }
+    if sesion["rol"] == "admin":
+        opciones[7] = ("Administración", menu_administracion)
+    return opciones
 
 
-def menu_privado(usuario_actual):
+def menu_privado(sesion):
     """Devuelve "9" (cerrar sesión) o "0" (salir)."""
-    if usuario_actual is None:
+    if sesion is None:
         print("Debe iniciar sesión.")
         return "9"
 
+    opciones = _opciones_del_rol(sesion)
     while True:
-        print(f"\n===== ECOTECH (sesión: {usuario_actual['nombre_usuario']}) =====")
-        print("1. Empleados")
-        print("2. Departamentos")
-        print("3. Proyectos")
-        print("4. Registro de tiempo")
-        print("5. Demo de relaciones (sin base de datos)")
-        print("6. Crear cuenta de usuario para un empleado")
-        print("7. Mi perfil")
-        print("8. Dólar observado")
+        print(f"\n===== ECOTECH ({sesion['nombre_usuario']} | {sesion['rol']}) =====")
+        for numero, (texto, _) in opciones.items():
+            print(f"{numero}. {texto}")
         print("9. Cerrar sesión")
         print("0. Salir")
 
         opcion = solicitar_opcion(9)
         if opcion in (0, 9):
             return str(opcion)
-        if opcion == 1:
-            menu_empleado()
-        elif opcion == 2:
-            menu_departamento()
-        elif opcion == 3:
-            menu_proyecto()
-        elif opcion == 4:
-            menu_registro_tiempo()
-        elif opcion == 5:
-            demo_relaciones()
-        elif opcion == 6:
-            solicitar_registro()
-        elif opcion == 7:
-            mostrar_perfil(usuario_actual)
-        elif opcion == 8:
-            consultar_dolar(usuario_actual)
+        if opcion in opciones:
+            opciones[opcion][1](sesion)
+        else:
+            print("Opción no válida.")

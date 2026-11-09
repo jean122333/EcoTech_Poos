@@ -2,13 +2,16 @@
 from dominio.departamento import Departamento
 from persistencia.departamento_dao import DepartamentoDAO
 from persistencia.empleado_dao import EmpleadoDAO
+from servicios.permisos import requiere_admin
 from menus.entradas import manejar_errores, ejecutar_menu, solicitar_entero, solicitar_texto
 
 _MSG_DUPLICADO = "Ya existe un departamento con ese nombre."
 
 
+# OPERACIONES (solo administrador)
 @manejar_errores("registrar departamento", _MSG_DUPLICADO)
-def registrar_departamento():
+@requiere_admin
+def registrar_departamento(sesion):
     nombre = solicitar_texto("Nombre del departamento")
     gerente = solicitar_texto("Gerente")
 
@@ -18,7 +21,8 @@ def registrar_departamento():
 
 
 @manejar_errores("listar departamentos")
-def listar_departamentos():
+@requiere_admin
+def listar_departamentos(sesion):
     departamentos = DepartamentoDAO.listar()
     if not departamentos:
         print("No hay departamentos registrados.")
@@ -30,7 +34,8 @@ def listar_departamentos():
 
 
 @manejar_errores("buscar departamento")
-def buscar_departamento():
+@requiere_admin
+def buscar_departamento(sesion):
     print("1. Buscar por ID")
     print("2. Buscar por nombre")
     criterio = input("Seleccione el criterio: ").strip()
@@ -50,7 +55,8 @@ def buscar_departamento():
 
 
 @manejar_errores("actualizar departamento", _MSG_DUPLICADO)
-def actualizar_departamento():
+@requiere_admin
+def actualizar_departamento(sesion):
     departamento = DepartamentoDAO.buscar_por_id(solicitar_entero("ID del departamento"))
     if departamento is None:
         print("Departamento no encontrado.")
@@ -73,7 +79,8 @@ def actualizar_departamento():
 
 
 @manejar_errores("eliminar departamento")
-def eliminar_departamento():
+@requiere_admin
+def eliminar_departamento(sesion):
     # los empleados del departamento se conservan, quedan sin departamento
     if DepartamentoDAO.eliminar(solicitar_entero("ID del departamento")):
         print("Departamento eliminado correctamente.")
@@ -82,7 +89,8 @@ def eliminar_departamento():
 
 
 @manejar_errores("listar empleados del departamento")
-def ver_empleados_departamento():
+@requiere_admin
+def ver_empleados_departamento(sesion):
     departamento = DepartamentoDAO.buscar_por_id(solicitar_entero("ID del departamento"))
     if departamento is None:
         print("Departamento no encontrado.")
@@ -96,7 +104,8 @@ def ver_empleados_departamento():
         print(" ", empleado.mostrar_datos())
 
 
-def menu_departamento():
+# MENÚ
+def menu_departamento(sesion):
     ejecutar_menu("DEPARTAMENTOS", {
         1: ("Registrar departamento", registrar_departamento),
         2: ("Listar departamentos", listar_departamentos),
@@ -104,4 +113,4 @@ def menu_departamento():
         4: ("Actualizar departamento", actualizar_departamento),
         5: ("Eliminar departamento", eliminar_departamento),
         6: ("Ver empleados del departamento", ver_empleados_departamento),
-    })
+    }, sesion)

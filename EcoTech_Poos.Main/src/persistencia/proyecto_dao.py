@@ -7,6 +7,16 @@ _COLUMNAS = "id_proyecto, nombre, fecha_inicio, descripcion"
 
 
 class ProyectoDAO:
+    # MAPEO FILA -> OBJETO
+    @staticmethod
+    def _fila_a_proyecto(fila):
+        return Proyecto(
+            id_proyecto=fila[0],
+            nombre=fila[1],
+            fecha_inicio=str(fila[2]),  # MariaDB entrega un objeto date
+            descripcion=fila[3],
+        )
+
     # CREATE
     @staticmethod
     def insertar(proyecto):
@@ -17,16 +27,6 @@ class ProyectoDAO:
         )
         proyecto.id_proyecto = nuevo_id
         return proyecto
-
-    # mapeo fila -> objeto
-    @staticmethod
-    def _fila_a_proyecto(fila):
-        return Proyecto(
-            id_proyecto=fila[0],
-            nombre=fila[1],
-            fecha_inicio=str(fila[2]),  # MariaDB entrega un objeto date
-            descripcion=fila[3],
-        )
 
     # READ
     @staticmethod
@@ -74,7 +74,8 @@ class ProyectoDAO:
         )
         return filas > 0
 
-    # DELETE (borra también sus asignaciones; los registros de tiempo quedan sin proyecto)
+    # ===== DELETE
+    # (borra también sus asignaciones; los registros de tiempo quedan sin proyecto)
     @staticmethod
     def eliminar(id_proyecto):
         filas, _ = ejecutar_escritura(
@@ -82,7 +83,7 @@ class ProyectoDAO:
         )
         return filas > 0
 
-    # relación muchos a muchos Empleado-Proyecto (tabla empleado_proyecto)
+    # ASIGNACIONES (muchos a muchos Empleado-Proyecto)
     @staticmethod
     def asignar_empleado(id_proyecto, id_empleado):
         """Asigna un empleado al proyecto. Lanza IntegrityError si ya estaba asignado

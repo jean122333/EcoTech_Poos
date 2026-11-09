@@ -3,25 +3,12 @@ from dominio.usuario import Usuario
 from persistencia.base_dao import ejecutar_escritura, consultar
 from persistencia.conexion import marcador_sql
 
-_COLUMNAS = "id_usuario, nombre_usuario, password_hash, empleado_id"
+# columnas de la tabla, en el mismo orden que usa _fila_a_usuario()
+_COLUMNAS = "id_usuario, nombre_usuario, password_hash, empleado_id, rol"
 
 
 class UsuarioDAO:
-    # CREATE
-    @staticmethod
-    def insertar(usuario):
-        m = marcador_sql()
-        sql = (
-            "INSERT INTO usuario (nombre_usuario, password_hash, empleado_id) "
-            f"VALUES ({m}, {m}, {m})"
-        )
-        _, nuevo_id = ejecutar_escritura(
-            sql, (usuario.nombre_usuario, usuario.password_hash, usuario.empleado_id)
-        )
-        usuario.id_usuario = nuevo_id
-        return usuario
-
-    # mapeo fila -> objeto
+    # MAPEO FILA -> OBJETO
     @staticmethod
     def _fila_a_usuario(fila):
         return Usuario(
@@ -29,7 +16,23 @@ class UsuarioDAO:
             nombre_usuario=fila[1],
             password_hash=fila[2],
             empleado_id=fila[3],
+            rol=fila[4],
         )
+
+    # CREATE
+    @staticmethod
+    def insertar(usuario):
+        m = marcador_sql()
+        sql = (
+            "INSERT INTO usuario (nombre_usuario, password_hash, empleado_id, rol) "
+            f"VALUES ({m}, {m}, {m}, {m})"
+        )
+        _, nuevo_id = ejecutar_escritura(
+            sql,
+            (usuario.nombre_usuario, usuario.password_hash, usuario.empleado_id, usuario.rol),
+        )
+        usuario.id_usuario = nuevo_id
+        return usuario
 
     # READ
     @staticmethod

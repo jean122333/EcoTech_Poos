@@ -8,6 +8,18 @@ _COLUMNAS = "id_empleado, nombre, correo, salario, departamento_id"
 
 
 class EmpleadoDAO:
+    # MAPEO FILA -> OBJETO
+    @staticmethod
+    def _fila_a_empleado(fila):
+        empleado = Empleado(
+            id_empleado=fila[0],
+            nombre=fila[1],
+            correo=fila[2],
+            salario=float(fila[3]),  # MariaDB entrega DECIMAL, se pasa a float
+        )
+        empleado.departamento_id = fila[4]
+        return empleado
+
     # CREATE
     @staticmethod
     def insertar(empleado):
@@ -22,18 +34,6 @@ class EmpleadoDAO:
             (empleado.nombre, empleado.correo, empleado.salario, empleado.departamento_id),
         )
         empleado.id_empleado = nuevo_id
-        return empleado
-
-    # mapeo fila -> objeto
-    @staticmethod
-    def _fila_a_empleado(fila):
-        empleado = Empleado(
-            id_empleado=fila[0],
-            nombre=fila[1],
-            correo=fila[2],
-            salario=float(fila[3]),  # MariaDB entrega DECIMAL, se pasa a float
-        )
-        empleado.departamento_id = fila[4]
         return empleado
 
     # READ

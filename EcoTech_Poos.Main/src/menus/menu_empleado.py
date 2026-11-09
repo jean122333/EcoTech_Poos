@@ -4,6 +4,7 @@ from persistencia.departamento_dao import DepartamentoDAO
 from persistencia.empleado_dao import EmpleadoDAO
 from persistencia.proyecto_dao import ProyectoDAO
 from persistencia.registro_tiempo_dao import RegistroTiempoDAO
+from servicios.permisos import requiere_admin
 from menus.entradas import (
     manejar_errores, ejecutar_menu, pedir_dato, solicitar_entero, solicitar_decimal,
     solicitar_texto,
@@ -12,6 +13,7 @@ from menus.entradas import (
 _MSG_CORREO = "Ya existe un empleado con ese correo, o el departamento indicado no existe."
 
 
+# AYUDAS
 def _pedir_departamento_id(opcional=True):
     """Pide un id de departamento y comprueba que exista (resultado normal: None)."""
     id_departamento = solicitar_entero("ID del departamento (vacío = ninguno)", opcional=opcional)
@@ -20,8 +22,24 @@ def _pedir_departamento_id(opcional=True):
     return id_departamento
 
 
+def imprimir_ficha(empleado):
+    """Ficha completa de un empleado: departamento, proyectos y horas. También la usa Mi ficha."""
+    print("Empleado:", empleado.mostrar_datos())
+    if empleado.departamento_id:
+        departamento = DepartamentoDAO.buscar_por_id(empleado.departamento_id)
+        print("Departamento:", departamento.mostrar_datos() if departamento else "(sin datos)")
+    else:
+        print("Departamento: (ninguno)")
+
+    proyectos = ProyectoDAO.listar_por_empleado(empleado.id_empleado)
+    print("Proyectos:", ", ".join(p.nombre for p in proyectos) if proyectos else "(ninguno)")
+    print("Horas registradas:", RegistroTiempoDAO.total_horas_empleado(empleado.id_empleado))
+
+
+# OPERACIONES (solo administrador)
 @manejar_errores("registrar empleado", _MSG_CORREO)
-def registrar_empleado():
+@requiere_admin
+def registrar_empleado(sesion):
     # si el correo es inválido solo se vuelve a pedir el correo
     nombre = pedir_dato("Nombre: ", Empleado.validar_nombre)
     correo = pedir_dato("Correo: ", Empleado.validar_correo)
@@ -34,7 +52,8 @@ def registrar_empleado():
 
 
 @manejar_errores("listar empleados")
-def listar_empleados():
+@requiere_admin
+def listar_empleados(sesion):
     empleados = EmpleadoDAO.listar()
     if not empleados:
         print("No hay empleados registrados.")
@@ -47,7 +66,8 @@ def listar_empleados():
 
 
 @manejar_errores("buscar empleado")
-def buscar_empleado():
+@requiere_admin
+def buscar_empleado(sesion):
     print("1. Buscar por ID")
     print("2. Buscar por correo")
     criterio = input("Seleccione el criterio: ").strip()
@@ -68,7 +88,8 @@ def buscar_empleado():
 
 
 @manejar_errores("actualizar empleado", _MSG_CORREO)
-def actualizar_empleado():
+@requiere_admin
+def actualizar_empleado(sesion):
     empleado = EmpleadoDAO.buscar_por_id(solicitar_entero("ID del empleado"))
     if empleado is None:
         print("Empleado no encontrado.")
@@ -99,7 +120,8 @@ def actualizar_empleado():
 
 
 @manejar_errores("eliminar empleado")
-def eliminar_empleado():
+@requiere_admin
+def eliminar_empleado(sesion):
     # tres caminos: eliminado (True), no encontrado (False) o fallo real (excepción)
     if EmpleadoDAO.eliminar(solicitar_entero("ID del empleado")):
         print("Empleado eliminado correctamente.")
@@ -108,26 +130,17 @@ def eliminar_empleado():
 
 
 @manejar_errores("consultar la ficha del empleado")
-def ver_ficha_empleado():
-    id_empleado = solicitar_entero("ID del empleado")
-    empleado = EmpleadoDAO.buscar_por_id(id_empleado)
+@requiere_admin
+def ver_ficha_empleado(sesion):
+    empleado = EmpleadoDAO.buscar_por_id(solicitar_entero("ID del empleado"))
     if empleado is None:
         print("Empleado no encontrado.")
         return
-
-    print("Empleado:", empleado.mostrar_datos())
-    if empleado.departamento_id:
-        departamento = DepartamentoDAO.buscar_por_id(empleado.departamento_id)
-        print("Departamento:", departamento.mostrar_datos() if departamento else "(sin datos)")
-    else:
-        print("Departamento: (ninguno)")
-
-    proyectos = ProyectoDAO.listar_por_empleado(id_empleado)
-    print("Proyectos:", ", ".join(p.nombre for p in proyectos) if proyectos else "(ninguno)")
-    print("Horas registradas:", RegistroTiempoDAO.total_horas_empleado(id_empleado))
+    imprimir_ficha(empleado)
 
 
-def menu_empleado():
+# MENÚ
+def menu_empleado(sesion):
     ejecutar_menu("EMPLEADOS", {
         1: ("Registrar empleado", registrar_empleado),
         2: ("Listar empleados", listar_empleados),
@@ -135,4 +148,4 @@ def menu_empleado():
         4: ("Actualizar empleado", actualizar_empleado),
         5: ("Eliminar empleado", eliminar_empleado),
         6: ("Ver ficha (departamento, proyectos y horas)", ver_ficha_empleado),
-    })
+    }, sesion)

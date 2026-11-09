@@ -1,13 +1,16 @@
 # persistencia/conexion.py
+# Conexión a SQLite o MariaDB/MySQL según DB_ENGINE (todo sale de .env, nunca del código).
 import os
 import re
 import sqlite3
+
 import mysql.connector  # conector oficial de MySQL (también habla con MariaDB)
 from mysql.connector.constants import ClientFlag
 from dotenv import load_dotenv
 
 load_dotenv()
 
+# CONSTANTES
 # errores de integridad (correo duplicado, restricciones) de cada motor
 ERRORES_INTEGRIDAD = (sqlite3.IntegrityError, mysql.connector.IntegrityError)
 
@@ -29,12 +32,19 @@ _AYUDAS = {
 }
 
 
+# MOTOR Y PARÁMETROS
 def obtener_motor():
     motor = os.getenv("DB_ENGINE", "sqlite").strip().lower()
     # MariaDB es compatible con el conector de MySQL
     if motor in ("mysql", "mariadb"):
         return "mysql"
     return motor
+
+
+def marcador_sql():
+    if obtener_motor() == "sqlite":
+        return "?"
+    return "%s"
 
 
 def _parametros_servidor():
@@ -50,6 +60,7 @@ def _parametros_servidor():
     }
 
 
+# CONEXIÓN
 def abrir_conexion():
     motor = obtener_motor()
     if motor == "sqlite":
@@ -98,12 +109,7 @@ def crear_base_datos():
             conexion.close()
 
 
-def marcador_sql():
-    if obtener_motor() == "sqlite":
-        return "?"
-    return "%s"
-
-
+# DIAGNÓSTICO
 def explicar_error(error) -> str:
     """Traduce un error de conexión a una pista entendible."""
     errno = getattr(error, "errno", None)

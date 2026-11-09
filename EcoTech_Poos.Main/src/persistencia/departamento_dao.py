@@ -7,6 +7,11 @@ _COLUMNAS = "id_departamento, nombre, gerente"
 
 
 class DepartamentoDAO:
+    # MAPEO FILA -> OBJETO
+    @staticmethod
+    def _fila_a_departamento(fila):
+        return Departamento(id_departamento=fila[0], nombre=fila[1], gerente=fila[2])
+
     # CREATE
     @staticmethod
     def insertar(departamento):
@@ -15,11 +20,6 @@ class DepartamentoDAO:
         _, nuevo_id = ejecutar_escritura(sql, (departamento.nombre, departamento.gerente))
         departamento.id_departamento = nuevo_id
         return departamento
-
-    # mapeo fila -> objeto
-    @staticmethod
-    def _fila_a_departamento(fila):
-        return Departamento(id_departamento=fila[0], nombre=fila[1], gerente=fila[2])
 
     # READ
     @staticmethod
@@ -53,7 +53,8 @@ class DepartamentoDAO:
         )
         return filas > 0
 
-    # DELETE (los empleados del departamento quedan sin departamento: ON DELETE SET NULL)
+    # DELETE
+    # (los empleados del departamento quedan sin departamento: ON DELETE SET NULL)
     @staticmethod
     def eliminar(id_departamento):
         filas, _ = ejecutar_escritura(

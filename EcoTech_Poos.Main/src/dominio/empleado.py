@@ -9,13 +9,14 @@ if TYPE_CHECKING:  # solo para los tipos: evita el import circular
 
 
 class Empleado:
-    # constantes de clase (no son columnas de la tabla)
+    # CONSTANTES (no son columnas de la tabla)
     # MAX_CORREO es 150 porque la columna correo es VARCHAR(150)
     MIN_NOMBRE = 2
     MAX_NOMBRE = 100
     MIN_CORREO = 6
     MAX_CORREO = 150
 
+    # CONSTRUCTOR
     # id_empleado=None: todavía no está guardado en la base de datos
     def __init__(self, nombre, correo, salario=0.0, id_empleado=None, departamento=None):
         self.nombre = nombre
@@ -30,7 +31,7 @@ class Empleado:
         self._proyectos: list[Proyecto] = []
         self._registros: list[RegistroTiempo] = []
 
-    # validadores: no usan input ni print, avisan el error con raise
+    # VALIDADORES (no usan input ni print, avisan el error con raise)
     @classmethod
     def validar_nombre(cls, nombre):
         if not isinstance(nombre, str):
@@ -61,7 +62,7 @@ class Empleado:
             raise ValueError("El dominio contiene puntos inválidos.")
         return correo
 
-    # encapsulamiento: atributos privados + validación
+    # PROPIEDADES
     # los setters usan los validadores, así el constructor y la semilla cumplen las mismas reglas
     @property
     def nombre(self):
@@ -123,7 +124,7 @@ class Empleado:
     def registros(self) -> tuple:
         return tuple(self._registros)
 
-    # métodos del UML
+    # MÉTODOS DEL UML
     def get_salario(self):
         return self._salario
 
@@ -155,6 +156,7 @@ class Empleado:
         proyecto.asignar_empleado(self)
         return True
 
+    # PRESENTACIÓN
     def __str__(self):
         return (f"Empleado(id={self.id_empleado}, nombre={self.nombre}, "
                 f"correo={self.correo}, salario={self.salario}, "

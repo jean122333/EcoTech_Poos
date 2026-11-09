@@ -8,6 +8,7 @@ if TYPE_CHECKING:  # solo para los tipos: evita el import circular con Empleado
 
 
 class Proyecto:
+    # CONSTRUCTOR
     # id_proyecto=None: todavía no está guardado en la base de datos
     def __init__(self, nombre: str, fecha_inicio: str, descripcion: str,
                  id_proyecto: int | None = None):
@@ -17,7 +18,7 @@ class Proyecto:
         self._id_proyecto = id_proyecto
         self._empleados: list[Empleado] = []
 
-    # encapsulamiento: atributos privados y validación
+    # PROPIEDADES
     @property
     def id_proyecto(self) -> int | None:
         return self._id_proyecto
@@ -66,7 +67,7 @@ class Proyecto:
     def empleados(self) -> tuple:
         return tuple(self._empleados)
 
-    # métodos del UML
+    # MÉTODOS DEL UML
     def asignar_empleado(self, empleado: Empleado) -> bool:
         """Asigna el empleado al proyecto y sincroniza el otro lado de la relación."""
         if empleado in self._empleados:
@@ -76,6 +77,7 @@ class Proyecto:
         empleado.agregar_proyecto(self)  # Empleado hace lo mismo con este proyecto
         return True
 
+    # PRESENTACIÓN
     def mostrar_datos(self) -> str:
         return (f"[{self.id_proyecto}] {self.nombre} "
                 f"(inicio: {self.fecha_inicio}) - {self.descripcion}")
