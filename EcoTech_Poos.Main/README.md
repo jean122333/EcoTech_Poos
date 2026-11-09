@@ -1,8 +1,8 @@
 # EcoTech – Modelo de clases y persistencia (POO)
 
 Proyecto de Programación Orientada a Objetos (Unidad 2). Implementa en Python las
-clases del diagrama UML (`Empleado`, `Departamento`, `Proyecto`, `RegistroTiempo`)
-y un CRUD de empleados con menú de consola. Funciona con SQLite o MariaDB/MySQL,
+clases del diagrama UML (`Empleado`, `Departamento`, `Proyecto`, `RegistroTiempo`, `Usuario`)
+con login, roles, consulta del dólar y menú de consola. Funciona con SQLite o MariaDB/MySQL,
 según lo que se configure en el archivo `.env`.
 
 ## Estructura
@@ -11,30 +11,31 @@ según lo que se configure en el archivo `.env`.
 EcoTech_Poos.Main/
 ├── requirements.txt
 ├── .env.example          # plantilla de configuración (se copia como .env)
-├── .gitignore
 ├── docs/
-│   ├── UML_unidad3.md    # cambios al UML (Empleado y Usuario)
+│   ├── UML_unidad3.md    # cambios al UML (roles, Indicador, permisos)
 │   └── USO_DE_IA.md      # documentación del uso de IA
 └── src/
     ├── main.py           # login y coordinación
-    ├── semilla_bd.py     # datos de prueba y cuenta admin
+    ├── semilla_bd.py     # datos de prueba y cuentas admin / empleados
     ├── dominio/          # clases del UML (no conocen SQL)
-    │   ├── empleado.py
-    │   ├── usuario.py
-    │   ├── departamento.py
-    │   ├── proyecto.py
-    │   └── registroTiempo.py
-    ├── servicios/        # autenticación y consulta a la API
-    │   ├── autenticacion.py
-    │   └── indicadores.py
+    │   ├── empleado.py, departamento.py, proyecto.py, registroTiempo.py
+    │   ├── usuario.py    # cuenta + rol (admin | empleado)
+    │   └── indicador.py  # observación validada del dólar
+    ├── servicios/        # reglas de acceso y consulta a la API
+    │   ├── permisos.py                  # exigir_sesion, exigir_admin, @requiere_admin
+    │   ├── autenticacion.py             # hash, registro y login (la sesión trae el rol)
+    │   ├── mi_cuenta.py                 # datos propios (empleado_id sale de la sesión)
+    │   ├── api_dolar.py                 # consulta HTTP y extracción del dato
+    │   ├── deserializador_indicador.py  # diccionario -> Indicador
+    │   └── indicadores.py               # consulta + guardado + respaldo + historial
     ├── menus/            # entrada de datos y menús de consola
-    │   ├── entradas.py
-    │   └── menu_usuario.py
-    └── persistencia/     # acceso a la base de datos
-        ├── conexion.py   # abre SQLite o MariaDB según DB_ENGINE
-        ├── crear_bd.py   # crea las tablas según el motor
-        ├── empleado_dao.py
-        └── usuario_dao.py
+    │   ├── entradas.py, menu_usuario.py, menu_mi_cuenta.py, menu_indicadores.py
+    │   └── menu_empleado.py, menu_departamento.py, menu_proyecto.py,
+    │       menu_registro_tiempo.py, demo_relaciones.py
+    └── persistencia/     # acceso a la base de datos (todo el SQL)
+        ├── conexion.py, base_dao.py, crear_bd.py
+        └── empleado_dao.py, departamento_dao.py, proyecto_dao.py,
+            registro_tiempo_dao.py, usuario_dao.py, indicador_dao.py
 ```
 
 ## Responsabilidades
@@ -47,7 +48,7 @@ EcoTech_Poos.Main/
 ## Requisitos
 
 - Python 3.10 o superior
-- Para MariaDB: XAMPP (MySQL/MariaDB y phpMyAdmin) o cualquier servidor compatible
+- Para MariaDB: XAMPP (phpMyAdmin)
 
 ## Instalación y ejecución
 
@@ -62,7 +63,7 @@ pip install -r requirements.txt
 ```
 3. Crear el archivo `.env` a partir de la plantilla:
 ```bash
-cp .env.example .env        # en CMD de Windows: copy .env.example .env
+cp .env.example .env        # en git bush
 ```
 4. Elegir el port en `.env`:
 
@@ -80,8 +81,9 @@ DB_NAME=ecotech
 # PYTHONPATH=src python src/persistencia/crear_bd.py
 # en la pc UNIversidad, revisar que puerto es 3307 o 3006
 
-5. Cargar los datos de prueba y crear la cuenta `admin` (pide una contraseña; se puede
-   ejecutar más de una vez sin duplicar datos):
+5. Cargar los datos de prueba y crear las cuentas "admin", "ana" y "luis" (pide una
+   contraseña por cuenta; se puede ejecutar más de una vez sin duplicar ni cambiar cuentas):
+
 ```bash
 python src/semilla_bd.py
 ```
@@ -97,41 +99,14 @@ Si se cambia de motor, los datos no se comparten: cada motor guarda los suyos.
 ## Menú (después del login)
 
 ```
-1. Empleados            5. Demo de relaciones
-2. Departamentos        6. Crear cuenta de usuario para un empleado
-3. Proyectos            7. Mi perfil
-4. Registro de tiempo   8. Dólar observado (con estimación de CLP a USD)
-9. Cerrar sesión        0. Salir
+Empleado y admin             Solo admin (opción 7, Administración)
+1. Mi ficha                  1. Empleados          4. Registro de tiempo (todos)
+2. Editar mis datos          2. Departamentos      5. Crear cuenta de usuario
+3. Mis proyectos             3. Proyectos          6. Demo de relaciones
+4. Mis registros de tiempo
+5. Registrar mis horas       9. Cerrar sesión      0. Salir
+6. Dólar (consultar e historial)
 ```
-
-## Unidad 3
-
-- **Validaciones:** `Empleado.validar_nombre` y `validar_correo` se usan en los setters, por lo
-  que el constructor y la semilla cumplen las mismas reglas. `pedir_dato` repite solo el campo
-  que falló. `MAX_CORREO` es 150 porque la columna `correo` es `VARCHAR(150)`.
-- **Usuario:** un empleado puede tener una cuenta (`Empleado 1 ── 0..1 Usuario`). La tabla
-  `usuario` guarda `password_hash` (bcrypt), no la contraseña. `empleado_id` es FK, `UNIQUE`
-  y `NOT NULL`.
-- **Login:** registrar una cuenta no inicia sesión. `autenticar` verifica la contraseña con
-  `bcrypt.checkpw` y devuelve los datos de la sesión o `None`.
-- **API y JSON:** `servicios/indicadores.py` consulta el dólar con `requests`, revisa el estado
-  HTTP y valida estructura, unidad, valor y fecha antes de usar el dato.
-- **IA:** ver `docs/USO_DE_IA.md`.
-
-## Notas de diseño
-
-- **Un DAO, dos motores:** `conexion.py` informa el motor y el marcador SQL (`?` en SQLite,
-  `%s` en MariaDB); el dominio y `main.py` no cambian.
-- **Consultas parametrizadas** en el DAO para evitar inyección SQL.
-- **Identidad del objeto:** un `Empleado` nuevo comienza con `id=None`; la base de datos
-  genera el id y el DAO lo recupera con `cursor.lastrowid`.
-- **Manejo de errores:** las escrituras usan `try/except/finally` con `rollback` y cierre de
-  conexión. El usuario ve un mensaje seguro; el detalle técnico queda en `ecotech.log`.
-- **Resultados normales vs. excepciones:** buscar un id inexistente devuelve `None` y
-  eliminar un id inexistente devuelve `False`; no son excepciones.
-- **Credenciales fuera del código:** se leen desde `.env` con `python-dotenv`.
-- **Relación "Consulta"** (Proyecto–Departamento, 1 a 1) del diagrama original:
-  no se implementó por decisión del equipo.
 
 ## Acceso remoto a MariaDB (phpMyAdmin)
 
@@ -145,5 +120,4 @@ El proyecto lee la conexión desde `.env`, por lo que usar un MariaDB en otro eq
 ##GRANT ALL PRIVILEGES ON ecotech.* TO 'ecotech_app'@'%';
 ##FLUSH PRIVILEGES;
 ```
-
-2. En el `.env` de cada equipo:
+# Arreglo de diseño README 08/11/26 - Jean
