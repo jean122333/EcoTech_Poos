@@ -37,6 +37,8 @@ class IndicadorDAO:
             "verificado_en = VALUES(verificado_en)"
         )
 
+        # Prueba Archivo Update en Github
+
     @staticmethod
     def guardar(indicador):
         """Inserta la observación o si existe, actualiza valor y última verificación."""

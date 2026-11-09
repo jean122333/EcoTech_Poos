@@ -21,6 +21,7 @@ def consultar_dolar(sesion):
         print(f"Estimación: {monto:,.0f} CLP = {dato.clp_a_usd(monto):,.2f} USD")
         print("(es una referencia, no una cotización bancaria)")
 
+    # Prueba Archivo Update en Github
 
 @manejar_errores("ver el historial del dólar")
 def ver_historial(sesion):
