@@ -68,7 +68,7 @@ pip install -r requirements.txt
 
 3. Crear el archivo `.env` a partir de la plantilla:
 ```bash
-cp .env.example .env        # en Git Bash
+cp env.example .env        # en Git Bash
 copy .env.example .env      # en CMD de Windows
 ```
 
